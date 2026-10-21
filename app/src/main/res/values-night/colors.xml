@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="brand_primary">#BAC3FF</color>
+    <color name="brand_on_primary">#172369</color>
+    <color name="brand_primary_container">#303F9F</color>
+    <color name="brand_on_primary_container">#E0E7FF</color>
+    <color name="app_surface">#121318</color>
+    <color name="app_surface_variant">#202127</color>
+    <color name="avatar_background">#303F66</color>
+    <color name="avatar_text">#DDE3FF</color>
     <color name="grade_entered">#81C784</color>
     <color name="graded_chip_background">#183D24</color>
     <color name="graded_chip_text">#A5D6A7</color>

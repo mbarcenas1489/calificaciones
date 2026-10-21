@@ -114,7 +114,14 @@ class CatalogViewModel(
   }
 
   fun showStudents() {
+    if (_state.value.selectedGroup == null || _state.value.screen == CatalogScreen.STUDENTS) return
     _state.value = _state.value.copy(screen = CatalogScreen.STUDENTS, rows = emptyList(), loading = true)
+    load()
+  }
+
+  fun showEvaluations() {
+    if (_state.value.selectedGroup == null || _state.value.screen == CatalogScreen.EVALUATIONS) return
+    _state.value = _state.value.copy(screen = CatalogScreen.EVALUATIONS, rows = emptyList(), loading = true)
     load()
   }
 

@@ -36,9 +36,6 @@ private data class StudentEvaluationPayload(
   @SerialName("Grade") val grade: Double,
 )
 
-@Serializable
-private data class GradePayload(@SerialName("Grade") val grade: Double)
-
 class SupabaseRepository {
   private val client = createSupabaseClient(
     supabaseUrl = "https://zhbjkaqngrfutdqmxree.supabase.co",
@@ -150,19 +147,24 @@ class SupabaseRepository {
     }
   }
 
-  suspend fun saveGrade(recordId: Int?, studentId: Int, evaluationId: Int, grade: Double) {
-    if (recordId == null) {
-      client.from("EstudentEvalucation").insert(StudentEvaluationPayload(studentId, evaluationId, grade))
-    } else {
-      client.from("EstudentEvalucation").update(GradePayload(grade)) {
-        filter { eq("Id", recordId) }
+  suspend fun saveGrades(
+    evaluationId: Int,
+    gradesByStudent: Map<Int, Double>,
+    recordIdsToDelete: List<Int>,
+  ) {
+    if (gradesByStudent.isNotEmpty()) {
+      val payloads = gradesByStudent.map { (studentId, grade) ->
+        StudentEvaluationPayload(studentId, evaluationId, grade)
+      }
+      client.from("EstudentEvalucation").upsert(payloads) {
+        onConflict = "IdStudent,IdEvaluation"
+      }
+    }
+    if (recordIdsToDelete.isNotEmpty()) {
+      client.from("EstudentEvalucation").delete {
+        filter { isIn("Id", recordIdsToDelete) }
       }
     }
   }
 
-  suspend fun deleteGrade(recordId: Int) {
-    client.from("EstudentEvalucation").delete {
-      filter { eq("Id", recordId) }
-    }
-  }
 }

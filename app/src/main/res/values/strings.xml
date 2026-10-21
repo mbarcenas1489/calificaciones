@@ -44,7 +44,7 @@
     <string name="group_label">Grupo %1$d</string>
     <string name="student_subtitle">Estudiante</string>
     <string name="grade">Nota</string>
-    <string name="save_grades">Guardar notas</string>
+    <string name="save_grades">Guardar cambios</string>
     <string name="grades_saved">Notas guardadas correctamente</string>
     <string name="maximum_short">Máx. %1$d</string>
     <string name="invalid_evaluation_data">No se pudo abrir la evaluación porque sus datos no son válidos.</string>
@@ -59,4 +59,26 @@
         <item>@string/theme_light</item>
         <item>@string/theme_dark</item>
     </string-array>
+    <string name="register_grades">Registrar notas</string>
+    <string name="evaluation_progress">%1$d de %2$d estudiantes</string>
+    <string name="more_options">Más opciones</string>
+    <string name="filter_all">Todos</string>
+    <string name="filter_pending">Pendientes</string>
+    <string name="filter_graded">Con nota</string>
+    <string name="grade_summary">%1$d estudiantes · %2$d con nota</string>
+    <string name="unsaved_changes">Cambios sin guardar</string>
+    <string name="discard_changes_title">¿Descartar los cambios?</string>
+    <string name="discard_changes_message">Las notas modificadas todavía no se han guardado.</string>
+    <string name="discard">Descartar</string>
+    <string name="retry">Reintentar</string>
+    <string name="evaluations_tab">Evaluaciones</string>
+    <string name="students_tab">Estudiantes</string>
+    <string name="route_component">Componente: %1$s</string>
+    <string name="route_group">%1$s / Grupo %2$d</string>
+    <string name="saving_grades">Guardando…</string>
+    <string name="grade_status_saved">Guardada</string>
+    <string name="grade_status_pending">Pendiente de guardar</string>
+    <string name="grade_status_syncing">Sincronizando…</string>
+    <string name="grade_status_offline">Pendiente · se guardará al volver internet</string>
+    <string name="draft_restored">Se recuperaron cambios pendientes guardados en este dispositivo.</string>
 </resources>

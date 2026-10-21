@@ -16,6 +16,7 @@ data class StudentGradeItem(
 data class GradeEntryUiState(
   val items: List<StudentGradeItem> = emptyList(),
   val loading: Boolean = true,
+  val saving: Boolean = false,
   val saved: Boolean = false,
   val error: String? = null,
 )
@@ -39,8 +40,8 @@ class GradeEntryViewModel(
     load()
   }
 
-  private fun load(saved: Boolean = false) {
-    _state.value = _state.value.copy(loading = true, error = null)
+  private fun load(saved: Boolean = false, showLoading: Boolean = true) {
+    _state.value = _state.value.copy(loading = showLoading, error = null)
     viewModelScope.launch {
       runCatching {
         val students = repository.getStudents(groupId)
@@ -50,31 +51,44 @@ class GradeEntryViewModel(
           StudentGradeItem(student, existing?.id, existing?.grade)
         }
       }.onSuccess {
-        _state.value = GradeEntryUiState(items = it, loading = false, saved = saved)
+        _state.value = GradeEntryUiState(items = it, loading = false, saving = false, saved = saved)
       }.onFailure {
-        _state.value = _state.value.copy(loading = false, error = it.message ?: it.javaClass.simpleName)
+        _state.value = _state.value.copy(
+          loading = false,
+          saving = false,
+          error = it.message ?: it.javaClass.simpleName,
+        )
       }
     }
   }
 
   fun save(values: Map<Int, String>) {
-    _state.value = _state.value.copy(loading = true, error = null)
+    _state.value = _state.value.copy(saving = true, saved = false, error = null)
     viewModelScope.launch {
       runCatching {
-        state.value.items.forEach { item ->
-          val text = values[item.student.id]?.trim().orEmpty()
+        val gradesByStudent = mutableMapOf<Int, Double>()
+        val recordIdsToDelete = mutableListOf<Int>()
+        val itemsByStudent = state.value.items.associateBy { it.student.id }
+        values.forEach { (studentId, rawValue) ->
+          val item = itemsByStudent[studentId] ?: return@forEach
+          val text = rawValue.trim()
           val grade = text.replace(',', '.').toDoubleOrNull()
           if (text.isBlank() && item.recordId != null) {
-            repository.deleteGrade(item.recordId)
+            recordIdsToDelete += item.recordId
           } else if (grade != null) {
             require(grade in 0.0..maximum.toDouble())
-            repository.saveGrade(item.recordId, item.student.id, evaluationId, grade)
+            gradesByStudent[studentId] = grade
           }
         }
+        repository.saveGrades(evaluationId, gradesByStudent, recordIdsToDelete)
       }.onSuccess {
-        load(saved = true)
+        load(saved = true, showLoading = false)
       }.onFailure {
-        _state.value = _state.value.copy(loading = false, error = it.message ?: it.javaClass.simpleName)
+        _state.value = _state.value.copy(
+          loading = false,
+          saving = false,
+          error = it.message ?: it.javaClass.simpleName,
+        )
       }
     }
   }
@@ -85,5 +99,9 @@ class GradeEntryViewModel(
 
   fun clearSaved() {
     _state.value = _state.value.copy(saved = false)
+  }
+
+  fun retry() {
+    load(showLoading = state.value.items.isEmpty())
   }
 }

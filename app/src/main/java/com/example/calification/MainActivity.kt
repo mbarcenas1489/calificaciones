@@ -6,6 +6,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.LinearLayout
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -60,6 +61,15 @@ class MainActivity : AppCompatActivity() {
     binding.entityList.adapter = listAdapter
     binding.evaluationGrid.adapter = evaluationAdapter
     binding.fab.setOnClickListener { showEditor() }
+    binding.emptyAction.setOnClickListener { showEditor() }
+    binding.groupNavigation.setOnItemSelectedListener { item ->
+      when (item.itemId) {
+        R.id.navigation_evaluations -> viewModel.showEvaluations()
+        R.id.navigation_students -> viewModel.showStudents()
+        else -> return@setOnItemSelectedListener false
+      }
+      true
+    }
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
       override fun handleOnBackPressed() {
         if (!viewModel.navigateBack()) {
@@ -82,17 +92,8 @@ class MainActivity : AppCompatActivity() {
     return true
   }
 
-  override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-    menu.findItem(R.id.action_students)?.isVisible = viewModel.state.value.screen == CatalogScreen.EVALUATIONS
-    return super.onPrepareOptionsMenu(menu)
-  }
-
   override fun onOptionsItemSelected(item: MenuItem): Boolean {
     when (item.itemId) {
-      R.id.action_students -> {
-        viewModel.showStudents()
-        return true
-      }
       R.id.action_theme -> {
         showThemeSelector()
         return true
@@ -120,10 +121,19 @@ class MainActivity : AppCompatActivity() {
     supportActionBar?.title = when (state.screen) {
       CatalogScreen.COMPONENTS -> getString(R.string.components_title)
       CatalogScreen.GROUPS -> getString(R.string.groups_title, state.selectedComponent?.name.orEmpty())
-      CatalogScreen.STUDENTS -> getString(R.string.students_title, state.selectedGroup?.number ?: 0)
-      CatalogScreen.EVALUATIONS -> getString(R.string.evaluations_title, state.selectedGroup?.number ?: 0)
+      CatalogScreen.STUDENTS -> getString(R.string.students_tab)
+      CatalogScreen.EVALUATIONS -> getString(R.string.evaluations_tab)
     }
-    binding.emptyView.setText(
+    supportActionBar?.subtitle = when (state.screen) {
+      CatalogScreen.COMPONENTS -> null
+      CatalogScreen.GROUPS -> getString(R.string.route_component, state.selectedComponent?.name.orEmpty())
+      CatalogScreen.STUDENTS, CatalogScreen.EVALUATIONS -> getString(
+        R.string.route_group,
+        state.selectedComponent?.name.orEmpty(),
+        state.selectedGroup?.number ?: 0,
+      )
+    }
+    binding.emptyLabel.setText(
       when (state.screen) {
         CatalogScreen.COMPONENTS -> R.string.no_components
         CatalogScreen.GROUPS -> R.string.no_groups
@@ -133,6 +143,19 @@ class MainActivity : AppCompatActivity() {
     )
     binding.progress.visibility = if (state.loading) View.VISIBLE else View.GONE
     binding.fab.isEnabled = !state.loading
+    val inGroup = state.screen == CatalogScreen.STUDENTS || state.screen == CatalogScreen.EVALUATIONS
+    binding.groupNavigation.visibility = if (inGroup) View.VISIBLE else View.GONE
+    (binding.fab.layoutParams as CoordinatorLayout.LayoutParams).apply {
+      bottomMargin = ((if (inGroup) 88 else 16) * resources.displayMetrics.density).toInt()
+      binding.fab.layoutParams = this
+    }
+    if (inGroup) {
+      binding.groupNavigation.selectedItemId = if (state.screen == CatalogScreen.EVALUATIONS) {
+        R.id.navigation_evaluations
+      } else {
+        R.id.navigation_students
+      }
+    }
     val displayRows = localizedRows(state)
     val showContent = !state.loading && displayRows.isNotEmpty()
     val evaluations = state.screen == CatalogScreen.EVALUATIONS
@@ -141,7 +164,9 @@ class MainActivity : AppCompatActivity() {
     binding.evaluationGrid.visibility = if (showContent && evaluations) View.VISIBLE else View.GONE
     binding.emptyView.visibility = if (!state.loading && state.rows.isEmpty()) View.VISIBLE else View.GONE
     state.error?.let {
-      Snackbar.make(binding.main, getString(R.string.operation_error, it), Snackbar.LENGTH_LONG).show()
+      Snackbar.make(binding.main, getString(R.string.operation_error, it), Snackbar.LENGTH_LONG)
+        .setAction(R.string.retry) { viewModel.load() }
+        .show()
       viewModel.clearError()
     }
   }

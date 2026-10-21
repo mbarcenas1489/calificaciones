@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/navigation_evaluations"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:title="@string/evaluations_tab" />
+    <item
+        android:id="@+id/navigation_students"
+        android:icon="@android:drawable/ic_menu_myplaces"
+        android:title="@string/students_tab" />
+</menu>
