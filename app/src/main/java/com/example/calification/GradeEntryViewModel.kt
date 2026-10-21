@@ -39,7 +39,7 @@ class GradeEntryViewModel(
     load()
   }
 
-  private fun load() {
+  private fun load(saved: Boolean = false) {
     _state.value = _state.value.copy(loading = true, error = null)
     viewModelScope.launch {
       runCatching {
@@ -50,7 +50,7 @@ class GradeEntryViewModel(
           StudentGradeItem(student, existing?.id, existing?.grade)
         }
       }.onSuccess {
-        _state.value = GradeEntryUiState(items = it, loading = false)
+        _state.value = GradeEntryUiState(items = it, loading = false, saved = saved)
       }.onFailure {
         _state.value = _state.value.copy(loading = false, error = it.message ?: it.javaClass.simpleName)
       }
@@ -72,7 +72,7 @@ class GradeEntryViewModel(
           }
         }
       }.onSuccess {
-        _state.value = _state.value.copy(loading = false, saved = true)
+        load(saved = true)
       }.onFailure {
         _state.value = _state.value.copy(loading = false, error = it.message ?: it.javaClass.simpleName)
       }
@@ -81,5 +81,9 @@ class GradeEntryViewModel(
 
   fun clearError() {
     _state.value = _state.value.copy(error = null)
+  }
+
+  fun clearSaved() {
+    _state.value = _state.value.copy(saved = false)
   }
 }

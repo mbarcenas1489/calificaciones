@@ -23,6 +23,8 @@ import com.google.android.material.R as MaterialR
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
+import java.text.Normalizer
+import java.util.Locale
 
 private data class GradeField(
   val student: Student,
@@ -40,6 +42,7 @@ class GradeEntryActivity : AppCompatActivity() {
   private val evaluationName by lazy { intent.getStringExtra(EXTRA_EVALUATION_NAME).orEmpty() }
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    ThemePreferences.apply(this)
     super.onCreate(savedInstanceState)
     binding = ActivityGradeEntryBinding.inflate(layoutInflater)
     setContentView(binding.root)
@@ -52,6 +55,12 @@ class GradeEntryActivity : AppCompatActivity() {
     binding.toolbar.subtitle = getString(R.string.maximum_grade, maxGrade)
     binding.toolbar.setNavigationOnClickListener { finish() }
     binding.saveButton.setOnClickListener { saveGrades() }
+    binding.studentSearchInput.addTextChangedListener(object : TextWatcher {
+      override fun beforeTextChanged(text: CharSequence?, start: Int, count: Int, after: Int) = Unit
+      override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) =
+        filterStudents(text?.toString().orEmpty())
+      override fun afterTextChanged(text: Editable?) = Unit
+    })
     if (evaluationId <= 0 || groupId <= 0 || maxGrade <= 0) {
       setLoading(false)
       showError(getString(R.string.invalid_evaluation_data))
@@ -68,9 +77,11 @@ class GradeEntryActivity : AppCompatActivity() {
 
   private fun render(state: GradeEntryUiState) {
     setLoading(state.loading)
-    if (!state.loading && !contentRendered) {
+    if (!state.loading && (!contentRendered || state.saved)) {
       showStudents(state.items)
       contentRendered = true
+    } else if (!state.loading && contentRendered) {
+      filterStudents(binding.studentSearchInput.text?.toString().orEmpty())
     }
     state.error?.let {
       showError(getString(R.string.operation_error, it))
@@ -79,7 +90,7 @@ class GradeEntryActivity : AppCompatActivity() {
     if (state.saved) {
       Toast.makeText(this, R.string.grades_saved, Toast.LENGTH_SHORT).show()
       setResult(RESULT_OK)
-      finish()
+      viewModel.clearSaved()
     }
   }
 
@@ -107,6 +118,7 @@ class GradeEntryActivity : AppCompatActivity() {
     binding.emptyView.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
     binding.scrollView.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
     binding.saveButton.isEnabled = items.isNotEmpty()
+    filterStudents(binding.studentSearchInput.text?.toString().orEmpty())
   }
 
   private fun updateFieldColor(field: GradeField) {
@@ -115,10 +127,27 @@ class GradeEntryActivity : AppCompatActivity() {
     val entered = grade != null && grade >= 0 && grade <= maxGrade
     val green = ContextCompat.getColor(this, R.color.grade_entered)
     val normalStroke = MaterialColors.getColor(field.binding.gradeLayout, MaterialR.attr.colorOutline)
-    val greenBackground = ContextCompat.getColor(this, R.color.grade_entered_background)
     field.binding.gradeLayout.boxStrokeColor = if (entered) green else normalStroke
-    field.binding.gradeLayout.boxBackgroundColor = if (entered) greenBackground else android.graphics.Color.TRANSPARENT
   }
+
+  private fun filterStudents(query: String) {
+    val normalizedQuery = normalize(query.trim())
+    var visibleCount = 0
+    fields.forEach { field ->
+      val matches = normalizedQuery.isEmpty() || normalize(field.student.name).contains(normalizedQuery)
+      field.binding.root.visibility = if (matches) View.VISIBLE else View.GONE
+      if (matches) visibleCount++
+    }
+    val hasStudents = fields.isNotEmpty()
+    binding.emptyView.setText(if (hasStudents) R.string.no_students_found else R.string.no_students_for_grades)
+    binding.emptyView.visibility = if (!hasStudents || visibleCount == 0) View.VISIBLE else View.GONE
+    binding.scrollView.visibility = if (hasStudents && visibleCount > 0) View.VISIBLE else View.GONE
+  }
+
+  private fun normalize(value: String): String =
+    Normalizer.normalize(value, Normalizer.Form.NFD)
+      .replace(Regex("\\p{M}+"), "")
+      .lowercase(Locale.getDefault())
 
   private fun saveGrades() {
     viewModel.save(fields.associate { it.student.id to it.binding.gradeInput.text?.toString().orEmpty() })
@@ -127,7 +156,8 @@ class GradeEntryActivity : AppCompatActivity() {
   private fun setLoading(loading: Boolean) {
     binding.progress.visibility = if (loading) View.VISIBLE else View.GONE
     binding.scrollView.visibility = if (loading) View.GONE else View.VISIBLE
-    binding.saveButton.isEnabled = !loading
+    binding.studentSearchLayout.isEnabled = !loading
+    binding.saveButton.isEnabled = !loading && fields.isNotEmpty()
   }
 
   private fun showError(message: String) {

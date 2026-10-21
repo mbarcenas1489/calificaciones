@@ -48,4 +48,15 @@
     <string name="grades_saved">Notas guardadas correctamente</string>
     <string name="maximum_short">Máx. %1$d</string>
     <string name="invalid_evaluation_data">No se pudo abrir la evaluación porque sus datos no son válidos.</string>
+    <string name="search_student">Buscar estudiante</string>
+    <string name="no_students_found">No se encontraron estudiantes con ese nombre.</string>
+    <string name="theme">Tema</string>
+    <string name="theme_system">Usar configuración del sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Oscuro</string>
+    <string-array name="theme_options">
+        <item>@string/theme_system</item>
+        <item>@string/theme_light</item>
+        <item>@string/theme_dark</item>
+    </string-array>
 </resources>

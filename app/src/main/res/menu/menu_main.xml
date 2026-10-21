@@ -9,4 +9,9 @@
         android:title="@string/manage_students"
         android:visible="false"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_theme"
+        android:orderInCategory="200"
+        android:title="@string/theme"
+        app:showAsAction="never" />
 </menu>

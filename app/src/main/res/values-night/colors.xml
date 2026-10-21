@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="grade_entered">#81C784</color>
+    <color name="graded_chip_background">#183D24</color>
+    <color name="graded_chip_text">#A5D6A7</color>
+    <color name="pending_chip_background">#4A3216</color>
+    <color name="pending_chip_text">#FFD180</color>
+</resources>

@@ -3,7 +3,6 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="grade_entered">#2E7D32</color>
-    <color name="grade_entered_background">#E8F5E9</color>
     <color name="graded_chip_background">#D7F2DD</color>
     <color name="graded_chip_text">#176B2C</color>
     <color name="pending_chip_background">#FFF0D6</color>
