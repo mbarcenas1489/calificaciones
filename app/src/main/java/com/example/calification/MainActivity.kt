@@ -1,7 +1,9 @@
 package com.example.calification
 
 import android.os.Bundle
+import android.text.Editable
 import android.text.InputType
+import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -22,10 +24,12 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
+import java.text.Normalizer
 
 class MainActivity : AppCompatActivity() {
   private lateinit var binding: ActivityMainBinding
   private val viewModel: CatalogViewModel by viewModels()
+  private var studentQuery = ""
 
   private val listAdapter by lazy {
     EntityAdapter(
@@ -60,15 +64,22 @@ class MainActivity : AppCompatActivity() {
     setSupportActionBar(binding.toolbar)
     binding.entityList.adapter = listAdapter
     binding.evaluationGrid.adapter = evaluationAdapter
+    binding.studentSearchInput.addTextChangedListener(object : TextWatcher {
+      override fun beforeTextChanged(text: CharSequence?, start: Int, count: Int, after: Int) = Unit
+      override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) {
+        studentQuery = text?.toString().orEmpty()
+        render(viewModel.state.value)
+      }
+      override fun afterTextChanged(text: Editable?) = Unit
+    })
     binding.fab.setOnClickListener { showEditor() }
     binding.emptyAction.setOnClickListener { showEditor() }
-    binding.groupNavigation.setOnItemSelectedListener { item ->
-      when (item.itemId) {
+    binding.groupNavigation.addOnButtonCheckedListener { _, checkedId, isChecked ->
+      if (!isChecked) return@addOnButtonCheckedListener
+      when (checkedId) {
         R.id.navigation_evaluations -> viewModel.showEvaluations()
         R.id.navigation_students -> viewModel.showStudents()
-        else -> return@setOnItemSelectedListener false
       }
-      true
     }
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
       override fun handleOnBackPressed() {
@@ -133,36 +144,51 @@ class MainActivity : AppCompatActivity() {
         state.selectedGroup?.number ?: 0,
       )
     }
-    binding.emptyLabel.setText(
-      when (state.screen) {
-        CatalogScreen.COMPONENTS -> R.string.no_components
-        CatalogScreen.GROUPS -> R.string.no_groups
-        CatalogScreen.STUDENTS -> R.string.no_students
-        CatalogScreen.EVALUATIONS -> R.string.no_evaluations
-      },
-    )
     binding.progress.visibility = if (state.loading) View.VISIBLE else View.GONE
     binding.fab.isEnabled = !state.loading
     val inGroup = state.screen == CatalogScreen.STUDENTS || state.screen == CatalogScreen.EVALUATIONS
+    val isStudentScreen = state.screen == CatalogScreen.STUDENTS
+    binding.studentSearchLayout.visibility = if (isStudentScreen) View.VISIBLE else View.GONE
+    binding.studentSearchLayout.isEnabled = !state.loading
     binding.groupNavigation.visibility = if (inGroup) View.VISIBLE else View.GONE
     (binding.fab.layoutParams as CoordinatorLayout.LayoutParams).apply {
-      bottomMargin = ((if (inGroup) 88 else 16) * resources.displayMetrics.density).toInt()
+      bottomMargin = ((if (inGroup) 72 else 16) * resources.displayMetrics.density).toInt()
       binding.fab.layoutParams = this
     }
     if (inGroup) {
-      binding.groupNavigation.selectedItemId = if (state.screen == CatalogScreen.EVALUATIONS) {
+      binding.groupNavigation.check(if (state.screen == CatalogScreen.EVALUATIONS) {
         R.id.navigation_evaluations
       } else {
         R.id.navigation_students
-      }
+      })
     }
-    val displayRows = localizedRows(state)
+    val allRows = localizedRows(state)
+    val normalizedQuery = normalize(studentQuery.trim())
+    val displayRows = if (isStudentScreen && normalizedQuery.isNotEmpty()) {
+      allRows.filter { normalize(it.title).contains(normalizedQuery) }
+    } else {
+      allRows
+    }
+    val noSearchResults = isStudentScreen && normalizedQuery.isNotEmpty() && allRows.isNotEmpty() && displayRows.isEmpty()
+    binding.emptyLabel.setText(
+      if (noSearchResults) {
+        R.string.no_students_found
+      } else {
+        when (state.screen) {
+          CatalogScreen.COMPONENTS -> R.string.no_components
+          CatalogScreen.GROUPS -> R.string.no_groups
+          CatalogScreen.STUDENTS -> R.string.no_students
+          CatalogScreen.EVALUATIONS -> R.string.no_evaluations
+        }
+      },
+    )
+    binding.emptyAction.visibility = if (noSearchResults) View.GONE else View.VISIBLE
     val showContent = !state.loading && displayRows.isNotEmpty()
     val evaluations = state.screen == CatalogScreen.EVALUATIONS
     if (evaluations) evaluationAdapter.submitList(displayRows) else listAdapter.submitList(displayRows)
     binding.entityList.visibility = if (showContent && !evaluations) View.VISIBLE else View.GONE
     binding.evaluationGrid.visibility = if (showContent && evaluations) View.VISIBLE else View.GONE
-    binding.emptyView.visibility = if (!state.loading && state.rows.isEmpty()) View.VISIBLE else View.GONE
+    binding.emptyView.visibility = if (!state.loading && displayRows.isEmpty()) View.VISIBLE else View.GONE
     state.error?.let {
       Snackbar.make(binding.main, getString(R.string.operation_error, it), Snackbar.LENGTH_LONG)
         .setAction(R.string.retry) { viewModel.load() }
@@ -170,6 +196,11 @@ class MainActivity : AppCompatActivity() {
       viewModel.clearError()
     }
   }
+
+  private fun normalize(value: String): String =
+    Normalizer.normalize(value, Normalizer.Form.NFD)
+      .replace(Regex("\\p{Mn}+"), "")
+      .lowercase()
 
   private fun localizedRows(state: CatalogUiState): List<EntityRow> {
     if (state.rows.isEmpty()) return emptyList()
@@ -180,8 +211,19 @@ class MainActivity : AppCompatActivity() {
       CatalogScreen.GROUPS -> state.groups.map {
         EntityRow(it.id, getString(R.string.group_label, it.number), getString(R.string.group_subtitle))
       }
-      CatalogScreen.STUDENTS -> state.students.map {
-        EntityRow(it.id, it.name, getString(R.string.student_subtitle))
+      CatalogScreen.STUDENTS -> state.rows.map { row ->
+        val grades = row.studentGrades.orEmpty()
+        row.copy(
+          subtitle = if (grades.isEmpty()) {
+            getString(R.string.student_without_evaluations)
+          } else {
+            getString(
+              R.string.student_grade_summary,
+              grades.size,
+              grades.count { it.grade != null },
+            )
+          },
+        )
       }
       CatalogScreen.EVALUATIONS -> state.rows
     }

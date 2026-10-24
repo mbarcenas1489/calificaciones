@@ -62,9 +62,27 @@ class CatalogViewModel(
       CatalogScreen.STUDENTS -> {
         val groupId = requireNotNull(current.selectedGroup).id
         val items = repository.getStudents(groupId)
+        val evaluations = repository.getEvaluations(groupId)
+        val gradesByEvaluation = evaluations.associate { evaluation ->
+          evaluation.id to repository.getEvaluationGrades(evaluation.id).associateBy { it.studentId }
+        }
         current.copy(
           students = items,
-          rows = items.map { EntityRow(it.id, it.name, "") },
+          evaluations = evaluations,
+          rows = items.map { student ->
+            EntityRow(
+              id = student.id,
+              title = student.name,
+              subtitle = "",
+              studentGrades = evaluations.map { evaluation ->
+                StudentEvaluationGrade(
+                  evaluationName = evaluation.name,
+                  maximumGrade = evaluation.value,
+                  grade = gradesByEvaluation[evaluation.id]?.get(student.id)?.grade,
+                )
+              },
+            )
+          },
         )
       }
       CatalogScreen.EVALUATIONS -> {

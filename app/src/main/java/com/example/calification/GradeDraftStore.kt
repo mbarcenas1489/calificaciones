@@ -3,7 +3,9 @@ package com.example.calification
 import android.content.Context
 
 object GradeDraftStore {
-  private const val PREFERENCES = "grade_drafts"
+  // v2 intentionally ignores drafts written while repeated row ids could
+  // duplicate one student's grade across the complete list on rotation.
+  private const val PREFERENCES = "grade_drafts_v2"
   private const val SEPARATOR = '\u001F'
 
   fun load(context: Context, evaluationId: Int): Map<Int, String> =

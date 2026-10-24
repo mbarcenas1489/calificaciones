@@ -71,7 +71,8 @@
                 android:gravity="center"
                 android:imeOptions="actionNext"
                 android:inputType="numberDecimal"
-                android:maxLines="1" />
+                android:maxLines="1"
+                android:saveEnabled="false" />
         </com.google.android.material.textfield.TextInputLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

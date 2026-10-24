@@ -107,7 +107,9 @@ class GradeEntryActivity : AppCompatActivity() {
       return
     }
     restoredDraft = GradeDraftStore.load(this, evaluationId)
-    autoSyncPending = restoredDraft.isNotEmpty()
+    // A restored draft must remain pending until the user explicitly saves it.
+    // This also prevents a configuration change from writing UI-restored values.
+    autoSyncPending = false
     startNetworkMonitoring()
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -167,6 +169,10 @@ class GradeEntryActivity : AppCompatActivity() {
     }
     items.forEachIndexed { index, item ->
       val row = ItemStudentGradeBinding.inflate(layoutInflater, binding.gradeContainer, false)
+      // Every inflated row starts with the same XML id. Keeping that id makes
+      // Android restore one EditText value into every student after rotation.
+      // Drafts are already restored by student id, so hierarchy restoration is disabled here.
+      row.gradeInput.id = View.NO_ID
       row.studentName.text = item.student.name
       row.studentAvatar.text = initials(item.student.name)
       row.gradeInput.filters = arrayOf(GradeRangeInputFilter(maxGrade.toDouble()))
